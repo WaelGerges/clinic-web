@@ -31,15 +31,16 @@
       "evidence_refs": "check ids in evidence/live-authz-matrix-results.json or file references"
     },
     "counts": {
-      "confirmed_fixed": 9,
+      "confirmed_fixed": 10,
       "confirmed_fixed_partial": 1,
-      "confirmed_open": 4,
+      "confirmed_open": 3,
       "informational": 4,
       "critical": 0,
       "high": 0,
       "medium": 5,
       "low": 9,
-      "informational_severity": 4
+      "informational_severity": 4,
+      "note": "CW-17 moved from informational-open to fixed on 2026-09-19; CW-12 remains open and is blocked by the Supabase plan tier."
     }
   },
   "findings": [
@@ -52,14 +53,18 @@
       "verification_level": "source_only",
       "status": "fixed",
       "impact": "Brief physical access to a signed-in browser becomes permanent account takeover. For a doctor account this yields clinical read/write and staff administration for the clinic; the legitimate owner is locked out.",
-      "affected": ["src/App.tsx:18 (pre-fix)", "route /auth/recovery", "supabase auth updateUser"],
+      "affected": [
+        "src/App.tsx:18 (pre-fix)",
+        "route /auth/recovery",
+        "supabase auth updateUser"
+      ],
       "preconditions": "Access to a browser tab holding a live session. No credentials or token theft required.",
       "root_cause": "The recovery view was selected from location.pathname alone, and the project's secure-password-change (re-authentication) setting is not enabled.",
       "violated_invariant": "A password change must be authorised by the current password or by a fresh recovery token.",
       "evidence": "Pre-fix: useState(location.pathname === '/auth/recovery'); the form calls client.auth.updateUser({ password }) with no re-authentication.",
       "reproduction": "Sign in, navigate to <origin>/auth/recovery in the same tab. Expected: workspace. Actual (pre-fix): 'Choose a new password' form, and submission succeeds.",
       "fix": "The route now also requires a PKCE 'code' query parameter on the page load; the PASSWORD_RECOVERY event path is unchanged so genuine recovery links still work.",
-      "residual_risk": "Client-side control only. An attacker at the same keyboard can call updateUser from the console. The authoritative fix is the Supabase 'secure password change' setting (see CW-12 / REMEDIATION-PLAN.md).",
+      "residual_risk": "Client-side control only. An attacker at the same keyboard can call updateUser from the console. On 2026-09-19 the project's 'Secure password change' setting was enabled, which requires reauthentication - but only for sessions older than 24 hours, so a workstation signed in that morning is still exposed. The control that would close this is 'Require current password when updating', deliberately left off because the recovery screen is this app's only password-update path and a recovering user cannot supply a current password. Test it against a real recovery once hosting exists; see OWNER-ACTIONS.md item 1.",
       "mappings": {
         "owasp_web": "A07:2025 Authentication Failures",
         "owasp_api": "API2:2023 Broken Authentication",
@@ -69,7 +74,10 @@
       },
       "cvss_v4_vector": "CVSS:4.0/AV:P/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N",
       "regression_test": "Proposed browser case in proposed-fixes/README.md; existing suites (17 unit, 14 browser) pass unchanged.",
-      "evidence_refs": ["src/App.tsx", "proposed-fixes/clinic-web-source-changes.patch"]
+      "evidence_refs": [
+        "src/App.tsx",
+        "proposed-fixes/clinic-web-source-changes.patch"
+      ]
     },
     {
       "id": "CW-02",
@@ -80,7 +88,10 @@
       "verification_level": "production_read_only",
       "status": "fixed_partial",
       "impact": "Latent but broad: any table added by a future migration would have been readable and writable by every signed-in user of any clinic before a policy existed for it.",
-      "affected": ["pg_default_acl for role postgres in schema public (objtypes r, S, f)", "same for clinic_private functions"],
+      "affected": [
+        "pg_default_acl for role postgres in schema public (objtypes r, S, f)",
+        "same for clinic_private functions"
+      ],
       "preconditions": "None today; triggered by the next CREATE TABLE in public.",
       "root_cause": "Supabase's permissive project default was never narrowed.",
       "violated_invariant": "A new database object is inaccessible until a migration deliberately grants access.",
@@ -98,7 +109,9 @@
       "cvss_v4_vector": null,
       "cvss_note": "Not scored: no reachable object exists today, so exploitability is contingent on a future change rather than on current state.",
       "regression_test": "backend-tests/security-hardening.test.mjs 'DB-06: new public tables are private by default'",
-      "evidence_refs": ["evidence/db-catalog-snapshot.md#default-privileges"]
+      "evidence_refs": [
+        "evidence/db-catalog-snapshot.md#default-privileges"
+      ]
     },
     {
       "id": "CW-03",
@@ -109,7 +122,12 @@
       "verification_level": "production_read_only",
       "status": "fixed",
       "impact": "An administrator's token could retrieve full before/after visit documents (notes, diagnoses, prescriptions) from an immutable, never-purged table with a single query string, bypassing the narrow column list both clients use.",
-      "affected": ["public.audit_events grants", "clinic_private.apply_command", "clinic_private.apply_visit_amendment", "src/api.ts api.audit"],
+      "affected": [
+        "public.audit_events grants",
+        "clinic_private.apply_command",
+        "clinic_private.apply_visit_amendment",
+        "src/api.ts api.audit"
+      ],
       "preconditions": "Active is_admin doctor membership and its JWT. Same clinic only; not cross-tenant.",
       "root_cause": "Field-level authorization was implemented in two clients rather than in the database.",
       "violated_invariant": "Clinical content is reachable only through the clinical read path governed by the clinical_read capability.",
@@ -126,7 +144,12 @@
       },
       "cvss_v4_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:H/UI:N/VC:H/VI:N/VA:N/SC:N/SI:N/SA:N",
       "regression_test": "backend-tests/security-hardening.test.mjs 'DB-02'",
-      "evidence_refs": ["AUD-01", "AUD-02", "AUD-03", "AUD-04"]
+      "evidence_refs": [
+        "AUD-01",
+        "AUD-02",
+        "AUD-03",
+        "AUD-04"
+      ]
     },
     {
       "id": "CW-04",
@@ -137,7 +160,12 @@
       "verification_level": "production_write",
       "status": "fixed",
       "impact": "A genuine PDF could be stored as report.html or scan.svg. Bytes are verified on download by both clients, so this is not in-origin execution; the risk is a colleague saving the file and the operating system trusting the extension.",
-      "affected": ["clinic_private.begin_attachment", "clinic_private.finalize_attachment", "src/api.ts prepareUpload", "src/Documents.tsx download handler"],
+      "affected": [
+        "clinic_private.begin_attachment",
+        "clinic_private.finalize_attachment",
+        "src/api.ts prepareUpload",
+        "src/Documents.tsx download handler"
+      ],
       "preconditions": "Any clinic member permitted to upload.",
       "root_cause": "File name and content type were validated independently and never compared; finalize compared only the stored object's size.",
       "violated_invariant": "A document's name, its recorded type and its stored bytes must agree.",
@@ -154,7 +182,12 @@
       },
       "cvss_v4_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:A/VC:N/VI:L/VA:N/SC:N/SI:L/SA:N",
       "regression_test": "backend-tests/security-hardening.test.mjs 'DB-03' x2; src/domain.test.ts extension-binding and download-naming cases",
-      "evidence_refs": ["DOC-02", "POS-11", "POS-12", "POS-13"]
+      "evidence_refs": [
+        "DOC-02",
+        "POS-11",
+        "POS-12",
+        "POS-13"
+      ]
     },
     {
       "id": "CW-05",
@@ -165,7 +198,10 @@
       "verification_level": "production_read_only",
       "status": "fixed",
       "impact": "Calling an implementation directly would skip logic that lives only in the public wrapper - for clinic_apply_command that is the send action's _expires_at freshness check and require_doctor_presence(). Not reachable over HTTP, so defence-in-depth rather than a demonstrated bypass.",
-      "affected": ["pg_proc.proacl for 20 clinic_private functions", "public.clinic_* wrapper security attribute"],
+      "affected": [
+        "pg_proc.proacl for 20 clinic_private functions",
+        "public.clinic_* wrapper security attribute"
+      ],
       "preconditions": "Would require a direct database connection as the authenticated role, or exposing clinic_private through PostgREST. Neither is possible today.",
       "root_cause": "The public wrappers were SECURITY INVOKER, which required EXECUTE grants on the implementations.",
       "violated_invariant": "Authorization and workflow gates are enforced at a layer the consumer cannot route around.",
@@ -183,7 +219,10 @@
       "cvss_v4_vector": null,
       "cvss_note": "Not scored: no reachable attack vector exists with PostgREST exposing only public and graphql_public.",
       "regression_test": "backend-tests/security-hardening.test.mjs 'DB-01'",
-      "evidence_refs": ["PRIV-09", "evidence/db-catalog-snapshot.md#functions"]
+      "evidence_refs": [
+        "PRIV-09",
+        "evidence/db-catalog-snapshot.md#functions"
+      ]
     },
     {
       "id": "CW-06",
@@ -194,7 +233,10 @@
       "verification_level": "source_only",
       "status": "fixed",
       "impact": "The weaker of two policies governed shared accounts, lowering resistance to guessing and credential stuffing for accounts that hold clinical data.",
-      "affected": ["src/App.tsx sign-up field", "src/App.tsx PasswordRecovery fields"],
+      "affected": [
+        "src/App.tsx sign-up field",
+        "src/App.tsx PasswordRecovery fields"
+      ],
       "preconditions": "None.",
       "root_cause": "The web client set its own minLength without reference to the mobile policy or a server-side minimum.",
       "violated_invariant": "One account has one password policy, enforced at its strongest across all clients.",
@@ -211,7 +253,9 @@
       },
       "cvss_v4_vector": null,
       "regression_test": "Covered indirectly by the browser suite; the enforcing control is server-side and listed as an owner action.",
-      "evidence_refs": ["proposed-fixes/clinic-web-source-changes.patch"]
+      "evidence_refs": [
+        "proposed-fixes/clinic-web-source-changes.patch"
+      ]
     },
     {
       "id": "CW-07",
@@ -222,7 +266,10 @@
       "verification_level": "local_backend",
       "status": "fixed",
       "impact": "One account could create clinics indefinitely, each seeding rows in clinics, clinic_memberships, audit_events and patient_counters; a doctor token could grow doctor_device_presence without limit. Storage and index growth on a shared backend; no tenant boundary crossed.",
-      "affected": ["clinic_private.create_clinic", "clinic_private.clinic_doctor_heartbeat"],
+      "affected": [
+        "clinic_private.create_clinic",
+        "clinic_private.clinic_doctor_heartbeat"
+      ],
       "preconditions": "Any signed-in user with a confirmed e-mail (clinics); any active doctor (presence).",
       "root_cause": "No quota on either path.",
       "violated_invariant": "A single account cannot consume unbounded shared resources.",
@@ -239,7 +286,9 @@
       },
       "cvss_v4_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N",
       "regression_test": "backend-tests/security-hardening.test.mjs 'DB-04' x2",
-      "evidence_refs": ["backend-tests/security-hardening.test.mjs"]
+      "evidence_refs": [
+        "backend-tests/security-hardening.test.mjs"
+      ]
     },
     {
       "id": "CW-08",
@@ -250,7 +299,9 @@
       "verification_level": "local_backend",
       "status": "fixed",
       "impact": "A value could carry unbounded punctuation around 7-20 valid digits. That text is copied twice into audit_events per save and broadcast to every clinic member over Realtime.",
-      "affected": ["public.patients.mobile constraint"],
+      "affected": [
+        "public.patients.mobile constraint"
+      ],
       "preconditions": "Any clinic member who can save a patient.",
       "root_cause": "The existing check stripped non-digits before measuring length.",
       "violated_invariant": "Every client-supplied text column has an explicit maximum length at the table.",
@@ -267,7 +318,9 @@
       },
       "cvss_v4_vector": null,
       "regression_test": "backend-tests/security-hardening.test.mjs 'DB-05'",
-      "evidence_refs": ["backend-tests/security-hardening.test.mjs"]
+      "evidence_refs": [
+        "backend-tests/security-hardening.test.mjs"
+      ]
     },
     {
       "id": "CW-09",
@@ -278,7 +331,11 @@
       "verification_level": "source_only",
       "status": "fixed",
       "impact": "A tag can be moved, so a compromise of the referenced action repositories would execute attacker-controlled code in a workflow that runs on pull_request. Blast radius is small: permissions contents: read, no secrets, no deployment.",
-      "affected": [".github/workflows/web.yml:10", ".github/workflows/web.yml:11", ".github/workflows/web.yml:22"],
+      "affected": [
+        ".github/workflows/web.yml:10",
+        ".github/workflows/web.yml:11",
+        ".github/workflows/web.yml:22"
+      ],
       "preconditions": "Compromise or retagging of actions/checkout, actions/setup-node or actions/upload-artifact.",
       "root_cause": "Tag references rather than commit pinning.",
       "violated_invariant": "Build inputs are immutable and verifiable.",
@@ -295,7 +352,9 @@
       },
       "cvss_v4_vector": null,
       "regression_test": "None automated; workflow review.",
-      "evidence_refs": [".github/workflows/web.yml"]
+      "evidence_refs": [
+        ".github/workflows/web.yml"
+      ]
     },
     {
       "id": "CW-10",
@@ -306,7 +365,11 @@
       "verification_level": "source_only",
       "status": "fixed",
       "impact": "A host that sends no headers would serve the application with no policy at all. The nginx file is an example and no deployment exists to verify.",
-      "affected": ["vite.config.ts", "dist/index.html", "deploy/nginx.example.conf"],
+      "affected": [
+        "vite.config.ts",
+        "dist/index.html",
+        "deploy/nginx.example.conf"
+      ],
       "preconditions": "Requires an injection foothold to exploit; the policy is a mitigation layer.",
       "root_cause": "The policy existed only in an example server configuration that nothing consumes.",
       "violated_invariant": "The application ships with its own baseline defences rather than depending on unverified hosting.",
@@ -323,7 +386,9 @@
       },
       "cvss_v4_vector": null,
       "regression_test": "npm run build asserted manually; dist/index.html inspected.",
-      "evidence_refs": ["vite.config.ts"]
+      "evidence_refs": [
+        "vite.config.ts"
+      ]
     },
     {
       "id": "CW-11",
@@ -334,7 +399,11 @@
       "verification_level": "production_read_only",
       "status": "open",
       "impact": "A member controlling both the file and its declared digest can store an object other members cannot open, or one matching its declared type only at the header. A hash recorded by the party supplying the file detects transport corruption, not a hostile uploader.",
-      "affected": ["clinic_private.begin_attachment (p_sha256_hex)", "clinic_private.finalize_attachment", "storage bucket clinic-documents"],
+      "affected": [
+        "clinic_private.begin_attachment (p_sha256_hex)",
+        "clinic_private.finalize_attachment",
+        "storage bucket clinic-documents"
+      ],
       "preconditions": "Any clinic member permitted to upload.",
       "root_cause": "No server-side component reads the stored bytes; the system has no server code at all.",
       "violated_invariant": "Stored clinical documents are verifiably the bytes the record describes.",
@@ -351,7 +420,9 @@
       },
       "cvss_v4_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:A/VC:N/VI:L/VA:L/SC:N/SI:L/SA:N",
       "regression_test": "Proposed: extend the document lifecycle test with a mismatched-digest fixture expecting rejection.",
-      "evidence_refs": ["evidence/db-catalog-snapshot.md#storage"]
+      "evidence_refs": [
+        "evidence/db-catalog-snapshot.md#storage"
+      ]
     },
     {
       "id": "CW-12",
@@ -362,14 +433,16 @@
       "verification_level": "production_read_only",
       "status": "open_owner_action",
       "impact": "A doctor account taken over by credential stuffing yields full clinical read/write and staff administration for its clinic, and the same credentials work in the mobile apps.",
-      "affected": ["Supabase Auth project configuration"],
+      "affected": [
+        "Supabase Auth project configuration"
+      ],
       "preconditions": "Remote attacker with a candidate credential list. Sign-up is open, so the login surface is public.",
       "root_cause": "Project settings were never hardened; MFA was never introduced.",
       "violated_invariant": "Accounts holding clinical data resist credential reuse and single-factor compromise.",
       "evidence": "Supabase security advisor WARN auth_leaked_password_protection, present both before and after this engagement. /auth/v1/settings shows email-only providers, disable_signup=false, no passkeys.",
       "reproduction": "Read the security advisor for the project.",
-      "fix": "Owner action: enable leaked-password protection and a 12-character minimum; enable secure password change (also closes the residual risk in CW-01); consider TOTP MFA for doctors and then require aal2 for the admin and clinical_write capabilities in clinic_private.allowed.",
-      "residual_risk": "Full until applied. Cannot be changed with the tooling available to this engagement.",
+      "fix": "Partly applied 2026-09-19. Minimum password length raised from 6 to 12 and verified server-side (an 11-character sign-up returns weak_password). Leaked-password protection could NOT be enabled: it requires a Supabase Pro plan and the Homeversion org is on Free; the save was rejected with 'Configuring leaked password protection via HaveIBeenPwned.org is available on Pro Plans and up.' Remaining owner actions: upgrade the plan then enable it; consider TOTP MFA for doctors and then require aal2 for the admin and clinical_write capabilities in clinic_private.allowed.",
+      "residual_risk": "Leaked-password protection is blocked by plan tier, so the auth_leaked_password_protection advisor warning persists and is a billing decision, not a technical one. Until then the 12-character minimum plus the client rule is the whole password defence, which raises the value of MFA for doctor accounts.",
       "mappings": {
         "owasp_web": "A07:2025 Authentication Failures",
         "owasp_api": "API2:2023 Broken Authentication",
@@ -380,7 +453,10 @@
       "cvss_v4_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:N/SC:N/SI:N/SA:N",
       "cvss_note": "Vector describes a successful takeover; likelihood is reduced by the 12-character client minimum now applied in both clients.",
       "regression_test": "Advisor WARN disappears; select count(*) from auth.mfa_factors where status='verified' if MFA is adopted.",
-      "evidence_refs": ["evidence/http-probes.md", "evidence/db-catalog-snapshot.md#advisors"]
+      "evidence_refs": [
+        "evidence/http-probes.md",
+        "evidence/db-catalog-snapshot.md#advisors"
+      ]
     },
     {
       "id": "CW-13",
@@ -391,7 +467,9 @@
       "verification_level": "source_only",
       "status": "open",
       "impact": "Attribution strength rather than access control: the actor is already the assigned doctor of a withDoctor appointment. The invariant that clinical notes belong to a doctor who confirmed receipt of that specific handoff lives in the clients only.",
-      "affected": ["clinic_private.apply_command visit branch"],
+      "affected": [
+        "clinic_private.apply_command visit branch"
+      ],
       "preconditions": "Assigned doctor of an appointment in status withDoctor.",
       "root_cause": "The receipt model was added for delivery confirmation and never made a precondition of clinical writes.",
       "violated_invariant": "Clinical notes are attributable to a doctor who acknowledged this handoff version.",
@@ -408,7 +486,9 @@
       },
       "cvss_v4_vector": null,
       "regression_test": "Proposed: after send, a visit save without acknowledgement expects RECEIPT_REQUIRED; after acknowledgement, a receipt.",
-      "evidence_refs": ["proposed-fixes/proposed-acknowledgement-gate.sql"]
+      "evidence_refs": [
+        "proposed-fixes/proposed-acknowledgement-gate.sql"
+      ]
     },
     {
       "id": "CW-14",
@@ -419,7 +499,9 @@
       "verification_level": "source_only",
       "status": "accepted",
       "impact": "A refresh token captured before sign-out remains usable until expiry. The token is removed from sessionStorage, so exploitation requires prior exfiltration.",
-      "affected": ["src/App.tsx exit()"],
+      "affected": [
+        "src/App.tsx exit()"
+      ],
       "preconditions": "Prior token theft.",
       "root_cause": "scope: 'local' is used to avoid signing the user out of the mobile apps, which share the account.",
       "violated_invariant": "Sign-out ends the session everywhere it can be replayed.",
@@ -436,7 +518,9 @@
       },
       "cvss_v4_vector": null,
       "regression_test": "None; behavioural decision pending.",
-      "evidence_refs": ["src/App.tsx"]
+      "evidence_refs": [
+        "src/App.tsx"
+      ]
     },
     {
       "id": "CW-15",
@@ -447,7 +531,9 @@
       "verification_level": "production_read_only",
       "status": "accepted",
       "impact": "None additional: recipients can already read the same demographics through PostgREST. visits events are filtered per subscriber by RLS, which is the part that matters.",
-      "affected": ["publication supabase_realtime"],
+      "affected": [
+        "publication supabase_realtime"
+      ],
       "preconditions": "Active clinic membership.",
       "root_cause": "postgres_changes carries full row payloads by design.",
       "violated_invariant": "None violated.",
@@ -455,10 +541,18 @@
       "reproduction": "Catalog inspection.",
       "fix": "None required.",
       "residual_risk": "Accepted.",
-      "mappings": {"owasp_web": "A01:2025 Broken Access Control", "owasp_api": "API3:2023", "asvs": "ASVS 5.0 8.2.2", "wstg": "n/a", "cwe": "CWE-200"},
+      "mappings": {
+        "owasp_web": "A01:2025 Broken Access Control",
+        "owasp_api": "API3:2023",
+        "asvs": "ASVS 5.0 8.2.2",
+        "wstg": "n/a",
+        "cwe": "CWE-200"
+      },
       "cvss_v4_vector": null,
       "regression_test": "None.",
-      "evidence_refs": ["evidence/db-catalog-snapshot.md#realtime"]
+      "evidence_refs": [
+        "evidence/db-catalog-snapshot.md#realtime"
+      ]
     },
     {
       "id": "CW-16",
@@ -469,7 +563,9 @@
       "verification_level": "production_write",
       "status": "accepted",
       "impact": "An attacker already holding a valid UUID learns it exists somewhere in the system. UUIDv4 is not enumerable and the row's contents stay unreachable.",
-      "affected": ["clinic_private.apply_command error paths"],
+      "affected": [
+        "clinic_private.apply_command error paths"
+      ],
       "preconditions": "Possession of a foreign UUID.",
       "root_cause": "Precise error codes aid legitimate clients.",
       "violated_invariant": "None materially.",
@@ -477,10 +573,18 @@
       "reproduction": "XC-09 in the live matrix.",
       "fix": "None; accepted.",
       "residual_risk": "Accepted.",
-      "mappings": {"owasp_web": "A01:2025", "owasp_api": "API1:2023", "asvs": "ASVS 5.0 V8", "wstg": "WSTG-ATHZ-04 Insecure Direct Object References", "cwe": "CWE-209"},
+      "mappings": {
+        "owasp_web": "A01:2025",
+        "owasp_api": "API1:2023",
+        "asvs": "ASVS 5.0 V8",
+        "wstg": "WSTG-ATHZ-04 Insecure Direct Object References",
+        "cwe": "CWE-209"
+      },
       "cvss_v4_vector": null,
       "regression_test": "None.",
-      "evidence_refs": ["XC-09"]
+      "evidence_refs": [
+        "XC-09"
+      ]
     },
     {
       "id": "CW-17",
@@ -489,20 +593,32 @@
       "confidence": "confirmed",
       "confirmation_basis": "live_reproduction",
       "verification_level": "production_write",
-      "status": "open_owner_action",
+      "status": "fixed",
       "impact": "Retention is intentional, but failed uploads and orphaned objects accumulate with no sweeper and no client or SQL deletion path.",
-      "affected": ["storage.objects policies", "storage.protect_objects_delete"],
+      "affected": [
+        "storage.objects policies",
+        "storage.protect_objects_delete"
+      ],
       "preconditions": "n/a",
       "root_cause": "No DELETE policy by design; SQL deletion blocked by Supabase.",
       "violated_invariant": "None; an operational gap.",
       "evidence": "DOC-09: uploader deletion refused. This audit produced exactly one orphan, recorded in TEST-RESULTS.md section 6.",
       "reproduction": "DOC-09 in the live matrix.",
-      "fix": "Owner action: delete the recorded orphan from the dashboard; consider a scheduled sweeper for failed uploads.",
-      "residual_risk": "Growth over time.",
-      "mappings": {"owasp_web": "A02:2025", "owasp_api": "API8:2023", "asvs": "ASVS 5.0 V5", "wstg": "n/a", "cwe": "CWE-459"},
+      "fix": "The audit's orphan was deleted through the dashboard on 2026-09-19: the 70-byte object, then its empty folder and Supabase's zero-byte .emptyFolderPlaceholder. Verified in storage.objects: clinic-documents now holds exactly one object, the real 4.4 MB attachment, and it is referenced by an attachments row. The general gap is unchanged: clients still have no DELETE policy and failed uploads would still accumulate, so a scheduled sweeper remains worth considering.",
+      "residual_risk": "Growth over time from failed uploads; no sweeper exists. No orphan is present today.",
+      "mappings": {
+        "owasp_web": "A02:2025",
+        "owasp_api": "API8:2023",
+        "asvs": "ASVS 5.0 V5",
+        "wstg": "n/a",
+        "cwe": "CWE-459"
+      },
       "cvss_v4_vector": null,
       "regression_test": "None.",
-      "evidence_refs": ["DOC-09", "TEST-RESULTS.md#6"]
+      "evidence_refs": [
+        "DOC-09",
+        "TEST-RESULTS.md#6"
+      ]
     },
     {
       "id": "CW-18",
@@ -513,7 +629,10 @@
       "verification_level": "source_only",
       "status": "open",
       "impact": "Headers, TLS, HSTS, caching of clinical responses, SPA fallback for /auth/recovery and origin isolation of the document preview are untested and could each undermine controls verified elsewhere.",
-      "affected": ["hosting (none)", "deploy/nginx.example.conf"],
+      "affected": [
+        "hosting (none)",
+        "deploy/nginx.example.conf"
+      ],
       "preconditions": "n/a",
       "root_cause": "No public deployment is included, confirmed by repository review.",
       "violated_invariant": "n/a - coverage gap, recorded rather than assumed safe.",
@@ -521,10 +640,18 @@
       "reproduction": "n/a",
       "fix": "Deploy behind the nginx configuration, then verify headers, TLS, HSTS, cache-control on clinical responses, SPA fallback and preview isolation against the live origin.",
       "residual_risk": "Unknown until tested.",
-      "mappings": {"owasp_web": "A02:2025 Security Misconfiguration", "owasp_api": "API8:2023", "asvs": "ASVS 5.0 V3", "wstg": "WSTG-CONF-07 Strict-Transport-Security; WSTG-CONF-12 Content Security Policy", "cwe": "CWE-16"},
+      "mappings": {
+        "owasp_web": "A02:2025 Security Misconfiguration",
+        "owasp_api": "API8:2023",
+        "asvs": "ASVS 5.0 V3",
+        "wstg": "WSTG-CONF-07 Strict-Transport-Security; WSTG-CONF-12 Content Security Policy",
+        "cwe": "CWE-16"
+      },
       "cvss_v4_vector": null,
       "regression_test": "Post-deployment header verification checklist in REMEDIATION-PLAN.md.",
-      "evidence_refs": ["deploy/nginx.example.conf"]
+      "evidence_refs": [
+        "deploy/nginx.example.conf"
+      ]
     }
   ]
 }

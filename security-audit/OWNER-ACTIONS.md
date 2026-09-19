@@ -1,70 +1,69 @@
 # Owner actions — Supabase dashboard checklist
 
-Four items from the 19 September 2026 assessment need the Supabase dashboard. I could not perform them: no browser session was connected, the Supabase CLI was not authenticated, and `supabase login` requires your credentials. Project: **clinic-chatgpt-dev** (`geikkygtnsgbtajyqdvc`).
+**Status: three of four completed on 19 September 2026**, through the desktop app's browser pane using the already-signed-in dashboard session. Project: **clinic-chatgpt-dev** (`geikkygtnsgbtajyqdvc`). Each change below was verified against the API or the database afterwards, not just observed in the UI.
 
-Dashboard labels move between releases. The links below are stable; if a label sits under a different heading than I describe, search the page for the setting name.
-
----
-
-## 1. Secure password change — closes the last part of CW-01
-
-**Why.** Without this, a signed-in session can set a new password without supplying the current one. That turns a minute at an unlocked reception machine into permanent account takeover. My code fix stops the app from _showing_ that form, but it can still be driven from the browser console, so this setting is the real control.
-
-**Where.** [Authentication → Sign In / Providers](https://supabase.com/dashboard/project/geikkygtnsgbtajyqdvc/auth/providers) → **Email** provider.
-
-**Do.** Turn on **"Secure password change"** (it may read "Require current password to update password"). Save.
-
-**Verify.** Sign in to the web app, open the browser console, and run `await supabase.auth.updateUser({ password: 'SomeNewPassword123!' })`. It should now fail with a re-authentication error instead of succeeding.
+| #   | Item                               | Status                                                                    |
+| --- | ---------------------------------- | ------------------------------------------------------------------------- |
+| 1   | Secure password change             | **Done**, with an important limitation — read below                       |
+| 2a  | Minimum password length 12         | **Done**, verified server-side                                            |
+| 2b  | Leaked-password protection         | **Blocked** — requires a Pro plan; this org is on Free                    |
+| 3   | Delete the orphaned storage object | **Done**                                                                  |
+| 4   | Redirect allowlist                 | **Not applicable yet** — no hosting exists; current list is already clean |
 
 ---
 
-## 2. Password strength — closes CW-12 and completes CW-06
+## 1. Secure password change — done, but CW-01 is not fully closed
 
-**Why.** Accounts are e-mail and password only, shared with both mobile apps, and a doctor account carries full clinical read/write plus staff administration. The 12-character minimum I added to the web client is advisory; only the project setting enforces it.
+**Enabled.** Authentication → Sign In / Providers → Email → _Secure password change_ is on, confirmed persisted.
 
-**Where.** [Authentication → Sign In / Providers](https://supabase.com/dashboard/project/geikkygtnsgbtajyqdvc/auth/providers) → **Password settings** section (sometimes under Authentication → Policies).
+**Read this limitation.** The setting's own wording is: a user must be _recently logged in_ to change their password without reauthenticating, and recently means **the session was created within the last 24 hours**. In a clinic where staff sign in each morning, a session at an unlocked workstation is almost always under 24 hours old, so an attacker at that keyboard can still change the password. This setting raises the bar; it does not close CW-01 on its own.
 
-**Do.**
+**The control that would close it** is the adjacent toggle, _Require current password when updating_, which forces the user to supply their existing password. **I deliberately left it off**, because the only password-update path this web app has is the recovery screen, and a user completing a recovery link cannot supply their current password. If Supabase applies that requirement to recovery sessions too, enabling it would break password recovery entirely, and there is no other reset path.
 
-- Set **Minimum password length** to **12**.
-- Turn on **"Prevent use of leaked passwords"** (HaveIBeenPwned check).
-
-**Verify.** [Advisors → Security](https://supabase.com/dashboard/project/geikkygtnsgbtajyqdvc/advisors/security) — the `auth_leaked_password_protection` warning disappears. Tell me and I will re-run the advisor to confirm.
+**Recommended:** once hosting exists and the redirect allowlist is configured (item 4), run one real recovery end to end with the toggle **on**. If recovery still completes, leave it on and CW-01 is closed. If recovery fails, turn it off and rely on the client guard plus a short session lifetime instead.
 
 ---
 
-## 3. Delete one orphaned storage object — closes CW-17 for this audit
+## 2. Password strength — partly done
 
-**Why.** My authorization tests left a single 70-byte PNG with no database row pointing at it. It is inert (no `attachments` row means no client can read it), but it should not linger.
+**Done.** Minimum password length was **6**, weaker even than the 8 the web client used to allow. It is now **12**, matching both mobile apps. Verified server-side: a sign-up with an 11-character password is rejected with `weak_password`, "Password should be at least 12 characters." No account was created by that probe.
 
-**Where.** [Storage → clinic-documents](https://supabase.com/dashboard/project/geikkygtnsgbtajyqdvc/storage/buckets/clinic-documents).
+**Blocked.** _Prevent use of leaked passwords_ is **only available on Pro plans and above**, and the `Homeversion` org is on **Free**. Enabling it caused the whole save to fail with:
 
-**Do.** Open the folder `fea6cab4-7fca-4944-8917-3fa29722dd7e`, then `674c11d0-7bc5-4a6a-9ffe-673bd97c7acf`, and delete the object `b6bf9e54-009e-436b-8859-2900b4bdb76d`. Deleting the whole `fea6cab4-…` folder is equivalent — nothing else lives under it.
+> Failed to update auth configuration: Configuring leaked password protection via HaveIBeenPwned.org is available on Pro Plans and up.
 
-**Do not touch** the other folder, `babaf4d2-c20b-4c92-be56-6c57fdc3291f`. That is a real 4.4 MB attachment with a live database row.
-
-**Verify.** The `fea6cab4-…` prefix is gone. I can confirm from the database on request.
+The toggle was reverted so the other two settings could save. The `auth_leaked_password_protection` advisor warning therefore remains, and will until the project is upgraded. **This is a billing decision, not a technical one.** Until then, the 12-character minimum plus the client-side rule is the whole password defence, which is why MFA for doctor accounts (CW-12) matters more than it otherwise would.
 
 ---
 
-## 4. Redirect allowlist — do this only once hosting exists
+## 3. Orphaned storage object — done
 
-**Why.** Recovery uses PKCE and will not complete unless the exact origin is allowlisted. Leaving it wide open would also let a recovery code be redirected off-site.
+Deleted the 70-byte PNG at `fea6cab4-…/674c11d0-…/b6bf9e54-…`, then the now-empty `fea6cab4-…` folder along with the zero-byte `.emptyFolderPlaceholder` that Supabase leaves behind.
 
-**Where.** [Authentication → URL Configuration](https://supabase.com/dashboard/project/geikkygtnsgbtajyqdvc/auth/url-configuration).
-
-**Do.** Set **Site URL** to the web origin, and list exactly two **Redirect URLs**: the origin, and `<origin>/auth/recovery`. Remove wildcards and any leftover localhost entries before going live.
-
-**Verify.** Request a password reset and complete it in the browser that started it. PKCE binds the code to that browser, so it must be the same one.
+Verified in the database: `storage.objects` for `clinic-documents` now contains exactly one row, the real 4.4 MB attachment under `babaf4d2-…`, which has a live `attachments` record. No orphans remain.
 
 ---
 
-## Not on this list, and why
+## 4. Redirect allowlist — nothing to do yet
 
-| Item                                                                                                           | Status                                                                                                                                       |
-| -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Deploy the site and verify its real headers                                                                    | Needs a hosting decision and credentials. Use `deploy/nginx.example.conf`; the meta-tag CSP I added does not cover `frame-ancestors` or HSTS |
-| Backups, restore drill, retention, monitoring                                                                  | Unverified in this assessment. Required before clinical use                                                                                  |
-| Server-side document verification (CW-11), receipt gate (CW-13), audit retention (CW-03 residual), MFA (CW-12) | **Deferred by your decision on 19 September 2026.** They remain written proposals in `proposed-fixes/`, not applied anywhere                 |
+Current state, read on 19 September 2026:
 
-Tell me when items 1 to 3 are done and I will re-run the advisor and the catalog checks to confirm.
+- **Site URL:** not set.
+- **Redirect URLs:** exactly two, both mobile custom schemes — `dev.homeversion.clinic.assistant://auth-callback/` and `dev.homeversion.clinic.doctor://auth-callback/`.
+
+No wildcards, no stale localhost entries. The list is already tight, so there is nothing to clean up.
+
+**When hosting exists**, set Site URL to the web origin and add `<origin>` and `<origin>/auth/recovery`. Note that **web password recovery cannot work until this is done**, because no web origin is currently allowlisted.
+
+---
+
+## Still outstanding
+
+| Item                                                                                                           | Status                                                                                                               |
+| -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Upgrade to Pro, then enable leaked-password protection                                                         | Billing decision (item 2b)                                                                                           |
+| Test _Require current password when updating_ against a real recovery, then leave it on if recovery survives   | After hosting (item 1)                                                                                               |
+| Deploy the site and verify its real headers                                                                    | Needs a hosting decision. Use `deploy/nginx.example.conf`; the meta-tag CSP does not cover `frame-ancestors` or HSTS |
+| Add the web origin to Site URL and the redirect allowlist                                                      | After hosting (item 4)                                                                                               |
+| Backups, restore drill, retention, monitoring                                                                  | Unverified in this assessment. Required before clinical use                                                          |
+| Server-side document verification (CW-11), receipt gate (CW-13), audit retention (CW-03 residual), MFA (CW-12) | **Deferred by your decision on 19 September 2026.** Written proposals in `proposed-fixes/`, applied nowhere          |

@@ -43,7 +43,7 @@ A security assessment of this app and its backend (19 September 2026) is recorde
 - Passwords must be 12–72 characters, matching the mobile apps.
 - The production `index.html` carries a baseline Content Security Policy; hosting must still send the headers in [the nginx example](deploy/nginx.example.conf), including `frame-ancestors`.
 
-Four Supabase dashboard settings cannot be applied from this repository and remain open: require re-authentication for password changes, enable leaked-password protection, set the minimum password length to 12, and confirm the redirect allowlist contains only the exact web origin and `<origin>/auth/recovery`. Step-by-step instructions are in [`security-audit/OWNER-ACTIONS.md`](security-audit/OWNER-ACTIONS.md).
+Supabase dashboard settings, updated 19 September 2026: password changes now require reauthentication for sessions older than 24 hours, and the minimum password length is 12, matching the mobile apps. Leaked-password protection could not be enabled because it needs a Supabase Pro plan. The redirect allowlist still has no web origin, so web password recovery will not work until hosting exists and the origin is added. Status and the remaining steps are in [`security-audit/OWNER-ACTIONS.md`](security-audit/OWNER-ACTIONS.md).
 
 ## Included workflows
 
@@ -97,6 +97,6 @@ This is a tested development implementation, not a certified clinical production
 - Configure HTTPS hosting and validate its exact security headers, document previews and printing.
 - Complete owned-account Auth/email/recovery and two-device mobile/web acceptance.
 - Verify backup/restore, retention, operational monitoring, load/failure behavior and required privacy controls.
-- Resolve the existing hosted Auth warning for disabled leaked-password protection.
+- Upgrade the Supabase org to Pro and enable leaked-password protection; it is unavailable on the Free plan, so the hosted Auth warning cannot clear until then.
 
 No public deployment is included.
