@@ -2,12 +2,14 @@
 
 ## Applied (already in the repositories and the development database)
 
-| Artefact | Where it is applied |
-|---|---|
+| Artefact                                    | Where it is applied                                                                                                                                                                                                                     |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `20260918234315_web_security_hardening.sql` | `clinic-chatgpt/supabase/migrations/` (canonical), `clinic-web/docs/migrations/`, and the hosted project `geikkygtnsgbtajyqdvc` (version `20260918234315`). SHA-256 `A951F7221E0335F62B8019534B86D0DB01F3DE29D839FA20C0B6B8374ED0D702`. |
-| `clinic-web-source-changes.patch` | Working tree of `clinic-web` (uncommitted; `git diff` of `src/`, `vite.config.ts`, `.github/`, `README.md`). Review and commit. |
+| `clinic-web-source-changes.patch`           | Committed to `clinic-web` as `4ba46a6` and pushed. Kept here as a standalone record of the source changes for review.                                                                                                                   |
 
-## Not applied — for owner decision
+## Not applied — deferred by the owner on 19 September 2026
+
+Each item below was offered for implementation and explicitly deferred. They are designs only; no code, migration or configuration anywhere depends on them.
 
 ### A. Server-side receipt gate for consultation writes (`proposed-acknowledgement-gate.sql`)
 
@@ -21,8 +23,4 @@ Test to add (PGlite): after `send`, a `visit save` by the assigned doctor withou
 
 ### C. Dashboard-only changes (no code)
 
-- Authentication → Password security: enable leaked-password protection; minimum length 12.
-- Authentication → "Secure password change" (re-authentication before `updateUser({password})`).
-- Authentication → URL configuration: allowlist exactly the web origin and `<origin>/auth/recovery` once hosting exists.
-- Consider TOTP MFA for doctor/admin accounts, then gate `admin` and `clinical_write` on `aal2` in `clinic_private.allowed`.
-- Delete the audit's orphaned Storage object (`TEST-RESULTS.md` §6).
+The owner is performing these directly. Step-by-step instructions with links are in [`../OWNER-ACTIONS.md`](../OWNER-ACTIONS.md): secure password change, leaked-password protection plus a 12-character minimum, deletion of the audit's one orphaned Storage object, and the redirect allowlist once hosting exists. TOTP MFA for doctor and administrator accounts, after which `admin` and `clinical_write` could be gated on `aal2` in `clinic_private.allowed`, is also deferred.

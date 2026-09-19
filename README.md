@@ -43,7 +43,7 @@ A security assessment of this app and its backend (19 September 2026) is recorde
 - Passwords must be 12–72 characters, matching the mobile apps.
 - The production `index.html` carries a baseline Content Security Policy; hosting must still send the headers in [the nginx example](deploy/nginx.example.conf), including `frame-ancestors`.
 
-Dashboard settings that cannot be applied from this repository and remain open: enable leaked-password protection, set the minimum password length to 12, require re-authentication for password changes, and confirm the redirect allowlist contains only the exact web origin and `<origin>/auth/recovery`.
+Four Supabase dashboard settings cannot be applied from this repository and remain open: require re-authentication for password changes, enable leaked-password protection, set the minimum password length to 12, and confirm the redirect allowlist contains only the exact web origin and `<origin>/auth/recovery`. Step-by-step instructions are in [`security-audit/OWNER-ACTIONS.md`](security-audit/OWNER-ACTIONS.md).
 
 ## Included workflows
 
