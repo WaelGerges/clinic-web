@@ -1,0 +1,277 @@
+diff --git a/.github/workflows/web.yml b/.github/workflows/web.yml
+index a4b24bd..eac0d5e 100644
+--- a/.github/workflows/web.yml
++++ b/.github/workflows/web.yml
+@@ -7,8 +7,8 @@ jobs:
+     runs-on: ubuntu-latest
+     timeout-minutes: 15
+     steps:
+-      - uses: actions/checkout@v7
+-      - uses: actions/setup-node@v7
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
++      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+         with:
+           node-version: '24'
+           cache: npm
+@@ -19,7 +19,7 @@ jobs:
+       - run: npm run check:translations
+       - run: npx playwright install --with-deps chromium
+       - run: npm run test:e2e
+-      - uses: actions/upload-artifact@v7
++      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+         if: failure()
+         with:
+           name: web-browser-failures
+diff --git a/README.md b/README.md
+index 0b229f0..b3e40bb 100644
+--- a/README.md
++++ b/README.md
+@@ -31,7 +31,19 @@ npm run test:e2e
+ 
+ Browser tests use installed Microsoft Edge locally and Playwright Chromium in CI. They intercept Supabase requests with fictional fixtures and do not create hosted patient records.
+ 
+-Current implementation verification: 15 unit tests, 14 browser scenarios, strict TypeScript compilation and production build passed. The source mobile/backend project also passed 41 database regression tests.
++Current implementation verification: 17 unit tests, 14 browser scenarios, strict TypeScript compilation and production build passed. The source mobile/backend project also passed 49 database regression tests.
++
++## Security
++
++A security assessment of this app and its backend (19 September 2026) is recorded under [`security-audit/`](security-audit/README.md). Fixes applied from it:
++
++- Backend migration `20260918234315_web_security_hardening` (applied to `clinic-chatgpt-dev`, copy in [`docs/migrations`](docs/migrations/20260918234315_web_security_hardening.sql)): RPC wrappers are `SECURITY DEFINER` and the private implementations are no longer callable by signed-in users; audit payload columns are not readable through the API; document file extensions must match the verified type and Storage MIME is re-checked at finalize; per-user clinic and per-doctor device caps; raw mobile length bound; new database objects are private by default.
++- Downloads are saved under an extension that matches the verified content type, and mismatched names are rejected before upload.
++- The password form on `/auth/recovery` is only offered for a page load that came from a recovery link.
++- Passwords must be 12–72 characters, matching the mobile apps.
++- The production `index.html` carries a baseline Content Security Policy; hosting must still send the headers in [the nginx example](deploy/nginx.example.conf), including `frame-ancestors`.
++
++Dashboard settings that cannot be applied from this repository and remain open: enable leaked-password protection, set the minimum password length to 12, require re-authentication for password changes, and confirm the redirect allowlist contains only the exact web origin and `<origin>/auth/recovery`.
+ 
+ ## Included workflows
+ 
+diff --git a/src/App.tsx b/src/App.tsx
+index b69705e..09ddc18 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -15,7 +15,13 @@ import { Settings } from './Settings';
+ export function App() {
+   const [session, setSession] = useState<Session | null>(null),
+     [ready, setReady] = useState(false),
+-    [recovery, setRecovery] = useState(location.pathname === '/auth/recovery'),
++    // The password form is offered only when this page load came from a recovery
++    // link (PKCE code in the URL) or the client reports a recovery session. Simply
++    // opening /auth/recovery with an existing session must not allow a silent
++    // password change.
++    [recovery, setRecovery] = useState(
++      location.pathname === '/auth/recovery' && new URLSearchParams(location.search).has('code'),
++    ),
+     [membership, setMembership] = useState<Membership | null>(null);
+   const [authError, setAuthError] = useState('');
+   const { locale, setLocale, t } = useLanguage();
+@@ -188,7 +194,8 @@ function Auth({ error }: { error: string }) {
+                   type="password"
+                   autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                   required
+-                  minLength={mode === 'signup' ? 8 : 1}
++                  minLength={mode === 'signup' ? 12 : 1}
++                  maxLength={72}
+                   value={password}
+                   onChange={(e) => setPassword(e.target.value)}
+                 />
+@@ -267,7 +274,8 @@ function PasswordRecovery({ done }: { done: () => void }) {
+             <input
+               required
+               type="password"
+-              minLength={8}
++              minLength={12}
++              maxLength={72}
+               autoComplete="new-password"
+               value={password}
+               onChange={(e) => setPassword(e.target.value)}
+@@ -277,7 +285,8 @@ function PasswordRecovery({ done }: { done: () => void }) {
+             <input
+               required
+               type="password"
+-              minLength={8}
++              minLength={12}
++              maxLength={72}
+               autoComplete="new-password"
+               value={confirm}
+               onChange={(e) => setConfirm(e.target.value)}
+diff --git a/src/Documents.tsx b/src/Documents.tsx
+index 279a404..7458b47 100644
+--- a/src/Documents.tsx
++++ b/src/Documents.tsx
+@@ -1,6 +1,6 @@
+ import { useEffect, useState } from 'react';
+ import { api, downloadDocument, prepareUpload, uploadDocument, type UploadIntent } from './api';
+-import type { Attachment, Patient } from './domain';
++import { downloadName, type Attachment, type Patient } from './domain';
+ import { useWorkspace } from './state';
+ import { useLanguage } from './i18n';
+ import { useOperation, useResource } from './hooks';
+@@ -30,7 +30,7 @@ export function Documents({ patient, visitId }: { patient: Patient; visitId?: st
+       if (download) {
+         const a = document.createElement('a');
+         a.href = url;
+-        a.download = doc.file_name;
++        a.download = downloadName(doc.file_name, blob.type);
+         a.click();
+         setTimeout(() => URL.revokeObjectURL(url), 1000);
+       } else setPreview({ url, doc });
+diff --git a/src/api.ts b/src/api.ts
+index 838c528..b6fb82f 100644
+--- a/src/api.ts
++++ b/src/api.ts
+@@ -2,6 +2,7 @@ import { client, deviceId } from './client';
+ import {
+   dayRange,
+   detectMime,
++  extensionMatches,
+   sha256,
+   type Membership,
+   type Patient,
+@@ -46,10 +47,15 @@ const messages: Record<string, string> = {
+   COMPLETED_VISIT_IMMUTABLE: 'Completed visits require an amendment.',
+   AMENDMENT_NOT_ASSIGNED_DOCTOR: 'Only the doctor who recorded this visit can amend it.',
+   ATTACHMENT_SIZE_MISMATCH: 'The document failed its integrity check.',
++  ATTACHMENT_TYPE_MISMATCH: 'The document type does not match its record.',
++  ATTACHMENT_EXTENSION: 'The file name extension must match the file type.',
+   ATTACHMENT_OBJECT_MISSING: 'The document upload is not complete.',
+   INVALID_ATTACHMENT_STATE: 'This document changed. Refresh before continuing.',
+   INVALID_INVITE: 'This invitation is invalid or expired.',
++  INVITATION_INVALID: 'This invitation is invalid or expired.',
++  EMAIL_VERIFICATION_REQUIRED: 'Verify your email before creating or joining a clinic.',
+   EMAIL_NOT_VERIFIED: 'Verify your email before creating or joining a clinic.',
++  CLINIC_LIMIT: 'This account already administers the maximum number of clinics.',
+ };
+ export function serviceError(error: unknown): ClinicError {
+   if (error instanceof ClinicError) return error;
+@@ -331,6 +337,8 @@ export async function prepareUpload(
+   const buffer = await file.arrayBuffer(),
+     mime = detectMime(new Uint8Array(buffer)),
+     id = crypto.randomUUID();
++  if (!extensionMatches(file.name, mime))
++    throw new ClinicError('The file name extension must match the file type.');
+   return {
+     id,
+     file,
+diff --git a/src/domain.test.ts b/src/domain.test.ts
+index 9b62a01..c27e767 100644
+--- a/src/domain.test.ts
++++ b/src/domain.test.ts
+@@ -8,6 +8,8 @@ import {
+   clinicToday,
+   dayRange,
+   detectMime,
++  downloadName,
++  extensionMatches,
+   localToUtc,
+   normalizePhone,
+   patientPayload,
+@@ -130,4 +132,17 @@ describe('document signatures', () => {
+     expect(detectMime(new TextEncoder().encode('%PDF-1.7'))).toBe('application/pdf');
+     expect(detectMime(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]))).toBe('image/png');
+   });
++  it('binds a present file extension to the verified type', () => {
++    expect(extensionMatches('report.html', 'application/pdf')).toBe(false);
++    expect(extensionMatches('scan.svg', 'image/png')).toBe(false);
++    expect(extensionMatches('Photo.JPEG', 'image/jpeg')).toBe(true);
++    expect(extensionMatches('lab results 2026.09', 'application/pdf')).toBe(true);
++    expect(extensionMatches('no-extension', 'image/webp')).toBe(true);
++  });
++  it('saves downloads under an extension that matches the verified type', () => {
++    expect(downloadName('report.html', 'application/pdf')).toBe('report.pdf');
++    expect(downloadName('x-ray.PNG', 'image/png')).toBe('x-ray.PNG');
++    expect(downloadName('consent', 'application/pdf')).toBe('consent.pdf');
++    expect(downloadName('a/b:c?.jpg', 'image/jpeg')).toBe('a_b_c_.jpg');
++  });
+ });
+diff --git a/src/domain.ts b/src/domain.ts
+index b1f95b7..b10bb2e 100644
+--- a/src/domain.ts
++++ b/src/domain.ts
+@@ -285,6 +285,25 @@ export function detectMime(bytes: Uint8Array) {
+   if (text.startsWith('RIFF') && text.slice(8, 12) === 'WEBP') return 'image/webp';
+   throw new Error('Choose a PDF, JPEG, PNG or WebP file.');
+ }
++const extensions: Record<string, string[]> = {
++  'image/jpeg': ['jpg', 'jpeg'],
++  'image/png': ['png'],
++  'image/webp': ['webp'],
++  'application/pdf': ['pdf'],
++};
++/** A name may omit its extension, but a present extension must match the verified type. */
++export function extensionMatches(name: string, mime: string) {
++  const match = /\.([A-Za-z][A-Za-z0-9]{0,9})$/.exec(name.trim());
++  return !match || (extensions[mime] || []).includes(match[1].toLowerCase());
++}
++/** The name a downloaded document is saved under: its verified type decides the extension. */
++export function downloadName(name: string, mime: string) {
++  const allowed = extensions[mime] || [],
++    safe = name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim() || 'document',
++    match = /\.([A-Za-z][A-Za-z0-9]{0,9})$/.exec(safe);
++  if (match && allowed.includes(match[1].toLowerCase())) return safe;
++  return (match ? safe.slice(0, -match[0].length) : safe) + '.' + (allowed[0] || 'bin');
++}
+ export async function sha256(buffer: ArrayBuffer) {
+   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', buffer))]
+     .map((x) => x.toString(16).padStart(2, '0'))
+diff --git a/src/locales/web-ar.json b/src/locales/web-ar.json
+index b0c8454..efe1a00 100644
+--- a/src/locales/web-ar.json
++++ b/src/locales/web-ar.json
+@@ -260,5 +260,7 @@
+   "Review the clinical field limits.": "راجع حدود طول الحقول الطبية.",
+   "Enter a phone number with 7–20 digits.": "أدخل رقم هاتف يتكون من ٧ إلى ٢٠ رقمًا.",
+   "The assignment changed. Your unsaved notes are retained below. Copy them before leaving this record.": "تغير تحويل المريض. ملاحظاتك غير المحفوظة ما زالت ظاهرة أدناه. انسخها قبل مغادرة السجل.",
+-  "Discard draft and refresh": "تجاهل المسودة والتحديث"
++  "Discard draft and refresh": "تجاهل المسودة والتحديث",
++  "The file name extension must match the file type.": "يجب أن يطابق امتداد اسم الملف نوع الملف.",
++  "This account already administers the maximum number of clinics.": "هذا الحساب يدير بالفعل الحد الأقصى من العيادات."
+ }
+diff --git a/vite.config.ts b/vite.config.ts
+index 02cb58d..c192a7f 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -1,8 +1,40 @@
+ import { readFileSync } from 'node:fs';
+-import { defineConfig } from 'vite';
++import { defineConfig, type Plugin } from 'vite';
+ import react from '@vitejs/plugin-react';
++
++/**
++ * Baseline Content Security Policy for the production document. A hosting
++ * server should still send the full policy as a header (see
++ * deploy/nginx.example.conf, which adds frame-ancestors); this meta tag keeps
++ * script injection blocked on hosts that send no headers at all. It is not
++ * added in development because the dev server injects inline module scripts.
++ */
++const csp = [
++  "default-src 'self'",
++  "script-src 'self'",
++  "style-src 'self' 'unsafe-inline'",
++  "img-src 'self' blob: data:",
++  "font-src 'self'",
++  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
++  "frame-src 'self' blob:",
++  "object-src 'none'",
++  "base-uri 'self'",
++  "form-action 'self'",
++].join('; ');
++const cspMeta: Plugin = {
++  name: 'clinic-csp-meta',
++  apply: 'build',
++  transformIndexHtml: () => [
++    {
++      tag: 'meta',
++      attrs: { 'http-equiv': 'Content-Security-Policy', content: csp },
++      injectTo: 'head-prepend',
++    },
++  ],
++};
++
+ export default defineConfig({
+-  plugins: [react()],
++  plugins: [react(), cspMeta],
+   server: {
+     port: 5173,
+     strictPort: true,

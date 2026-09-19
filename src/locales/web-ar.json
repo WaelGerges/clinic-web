@@ -260,5 +260,7 @@
   "Review the clinical field limits.": "راجع حدود طول الحقول الطبية.",
   "Enter a phone number with 7–20 digits.": "أدخل رقم هاتف يتكون من ٧ إلى ٢٠ رقمًا.",
   "The assignment changed. Your unsaved notes are retained below. Copy them before leaving this record.": "تغير تحويل المريض. ملاحظاتك غير المحفوظة ما زالت ظاهرة أدناه. انسخها قبل مغادرة السجل.",
-  "Discard draft and refresh": "تجاهل المسودة والتحديث"
+  "Discard draft and refresh": "تجاهل المسودة والتحديث",
+  "The file name extension must match the file type.": "يجب أن يطابق امتداد اسم الملف نوع الملف.",
+  "This account already administers the maximum number of clinics.": "هذا الحساب يدير بالفعل الحد الأقصى من العيادات."
 }

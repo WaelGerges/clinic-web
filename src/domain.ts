@@ -285,6 +285,25 @@ export function detectMime(bytes: Uint8Array) {
   if (text.startsWith('RIFF') && text.slice(8, 12) === 'WEBP') return 'image/webp';
   throw new Error('Choose a PDF, JPEG, PNG or WebP file.');
 }
+const extensions: Record<string, string[]> = {
+  'image/jpeg': ['jpg', 'jpeg'],
+  'image/png': ['png'],
+  'image/webp': ['webp'],
+  'application/pdf': ['pdf'],
+};
+/** A name may omit its extension, but a present extension must match the verified type. */
+export function extensionMatches(name: string, mime: string) {
+  const match = /\.([A-Za-z][A-Za-z0-9]{0,9})$/.exec(name.trim());
+  return !match || (extensions[mime] || []).includes(match[1].toLowerCase());
+}
+/** The name a downloaded document is saved under: its verified type decides the extension. */
+export function downloadName(name: string, mime: string) {
+  const allowed = extensions[mime] || [],
+    safe = name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim() || 'document',
+    match = /\.([A-Za-z][A-Za-z0-9]{0,9})$/.exec(safe);
+  if (match && allowed.includes(match[1].toLowerCase())) return safe;
+  return (match ? safe.slice(0, -match[0].length) : safe) + '.' + (allowed[0] || 'bin');
+}
 export async function sha256(buffer: ArrayBuffer) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', buffer))]
     .map((x) => x.toString(16).padStart(2, '0'))

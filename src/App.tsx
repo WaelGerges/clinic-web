@@ -15,7 +15,13 @@ import { Settings } from './Settings';
 export function App() {
   const [session, setSession] = useState<Session | null>(null),
     [ready, setReady] = useState(false),
-    [recovery, setRecovery] = useState(location.pathname === '/auth/recovery'),
+    // The password form is offered only when this page load came from a recovery
+    // link (PKCE code in the URL) or the client reports a recovery session. Simply
+    // opening /auth/recovery with an existing session must not allow a silent
+    // password change.
+    [recovery, setRecovery] = useState(
+      location.pathname === '/auth/recovery' && new URLSearchParams(location.search).has('code'),
+    ),
     [membership, setMembership] = useState<Membership | null>(null);
   const [authError, setAuthError] = useState('');
   const { locale, setLocale, t } = useLanguage();
@@ -188,7 +194,8 @@ function Auth({ error }: { error: string }) {
                   type="password"
                   autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                   required
-                  minLength={mode === 'signup' ? 8 : 1}
+                  minLength={mode === 'signup' ? 12 : 1}
+                  maxLength={72}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -267,7 +274,8 @@ function PasswordRecovery({ done }: { done: () => void }) {
             <input
               required
               type="password"
-              minLength={8}
+              minLength={12}
+              maxLength={72}
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -277,7 +285,8 @@ function PasswordRecovery({ done }: { done: () => void }) {
             <input
               required
               type="password"
-              minLength={8}
+              minLength={12}
+              maxLength={72}
               autoComplete="new-password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}

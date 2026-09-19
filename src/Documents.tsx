@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, downloadDocument, prepareUpload, uploadDocument, type UploadIntent } from './api';
-import type { Attachment, Patient } from './domain';
+import { downloadName, type Attachment, type Patient } from './domain';
 import { useWorkspace } from './state';
 import { useLanguage } from './i18n';
 import { useOperation, useResource } from './hooks';
@@ -30,7 +30,7 @@ export function Documents({ patient, visitId }: { patient: Patient; visitId?: st
       if (download) {
         const a = document.createElement('a');
         a.href = url;
-        a.download = doc.file_name;
+        a.download = downloadName(doc.file_name, blob.type);
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } else setPreview({ url, doc });

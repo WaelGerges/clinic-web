@@ -31,7 +31,19 @@ npm run test:e2e
 
 Browser tests use installed Microsoft Edge locally and Playwright Chromium in CI. They intercept Supabase requests with fictional fixtures and do not create hosted patient records.
 
-Current implementation verification: 15 unit tests, 14 browser scenarios, strict TypeScript compilation and production build passed. The source mobile/backend project also passed 41 database regression tests.
+Current implementation verification: 17 unit tests, 14 browser scenarios, strict TypeScript compilation and production build passed. The source mobile/backend project also passed 49 database regression tests.
+
+## Security
+
+A security assessment of this app and its backend (19 September 2026) is recorded under [`security-audit/`](security-audit/README.md). Fixes applied from it:
+
+- Backend migration `20260918234315_web_security_hardening` (applied to `clinic-chatgpt-dev`, copy in [`docs/migrations`](docs/migrations/20260918234315_web_security_hardening.sql)): RPC wrappers are `SECURITY DEFINER` and the private implementations are no longer callable by signed-in users; audit payload columns are not readable through the API; document file extensions must match the verified type and Storage MIME is re-checked at finalize; per-user clinic and per-doctor device caps; raw mobile length bound; new database objects are private by default.
+- Downloads are saved under an extension that matches the verified content type, and mismatched names are rejected before upload.
+- The password form on `/auth/recovery` is only offered for a page load that came from a recovery link.
+- Passwords must be 12–72 characters, matching the mobile apps.
+- The production `index.html` carries a baseline Content Security Policy; hosting must still send the headers in [the nginx example](deploy/nginx.example.conf), including `frame-ancestors`.
+
+Dashboard settings that cannot be applied from this repository and remain open: enable leaked-password protection, set the minimum password length to 12, require re-authentication for password changes, and confirm the redirect allowlist contains only the exact web origin and `<origin>/auth/recovery`.
 
 ## Included workflows
 

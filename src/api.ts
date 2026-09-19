@@ -2,6 +2,7 @@ import { client, deviceId } from './client';
 import {
   dayRange,
   detectMime,
+  extensionMatches,
   sha256,
   type Membership,
   type Patient,
@@ -46,10 +47,15 @@ const messages: Record<string, string> = {
   COMPLETED_VISIT_IMMUTABLE: 'Completed visits require an amendment.',
   AMENDMENT_NOT_ASSIGNED_DOCTOR: 'Only the doctor who recorded this visit can amend it.',
   ATTACHMENT_SIZE_MISMATCH: 'The document failed its integrity check.',
+  ATTACHMENT_TYPE_MISMATCH: 'The document type does not match its record.',
+  ATTACHMENT_EXTENSION: 'The file name extension must match the file type.',
   ATTACHMENT_OBJECT_MISSING: 'The document upload is not complete.',
   INVALID_ATTACHMENT_STATE: 'This document changed. Refresh before continuing.',
   INVALID_INVITE: 'This invitation is invalid or expired.',
+  INVITATION_INVALID: 'This invitation is invalid or expired.',
+  EMAIL_VERIFICATION_REQUIRED: 'Verify your email before creating or joining a clinic.',
   EMAIL_NOT_VERIFIED: 'Verify your email before creating or joining a clinic.',
+  CLINIC_LIMIT: 'This account already administers the maximum number of clinics.',
 };
 export function serviceError(error: unknown): ClinicError {
   if (error instanceof ClinicError) return error;
@@ -331,6 +337,8 @@ export async function prepareUpload(
   const buffer = await file.arrayBuffer(),
     mime = detectMime(new Uint8Array(buffer)),
     id = crypto.randomUUID();
+  if (!extensionMatches(file.name, mime))
+    throw new ClinicError('The file name extension must match the file type.');
   return {
     id,
     file,

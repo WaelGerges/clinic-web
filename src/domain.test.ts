@@ -8,6 +8,8 @@ import {
   clinicToday,
   dayRange,
   detectMime,
+  downloadName,
+  extensionMatches,
   localToUtc,
   normalizePhone,
   patientPayload,
@@ -129,5 +131,18 @@ describe('document signatures', () => {
   it('detects PDF and PNG from bytes', () => {
     expect(detectMime(new TextEncoder().encode('%PDF-1.7'))).toBe('application/pdf');
     expect(detectMime(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]))).toBe('image/png');
+  });
+  it('binds a present file extension to the verified type', () => {
+    expect(extensionMatches('report.html', 'application/pdf')).toBe(false);
+    expect(extensionMatches('scan.svg', 'image/png')).toBe(false);
+    expect(extensionMatches('Photo.JPEG', 'image/jpeg')).toBe(true);
+    expect(extensionMatches('lab results 2026.09', 'application/pdf')).toBe(true);
+    expect(extensionMatches('no-extension', 'image/webp')).toBe(true);
+  });
+  it('saves downloads under an extension that matches the verified type', () => {
+    expect(downloadName('report.html', 'application/pdf')).toBe('report.pdf');
+    expect(downloadName('x-ray.PNG', 'image/png')).toBe('x-ray.PNG');
+    expect(downloadName('consent', 'application/pdf')).toBe('consent.pdf');
+    expect(downloadName('a/b:c?.jpg', 'image/jpeg')).toBe('a_b_c_.jpg');
   });
 });

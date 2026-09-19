@@ -1,0 +1,1042 @@
+{
+  "executed_at": "2026-09-18T23:52:09.616Z",
+  "project_host": "geikkygtnsgbtajyqdvc.supabase.co",
+  "created": {
+    "clinics": [
+      "fea6cab4-7fca-4944-8917-3fa29722dd7e",
+      "6d57176c-2ea1-4f4c-b380-149a8f68ad16"
+    ],
+    "patients": [
+      "674c11d0-7bc5-4a6a-9ffe-673bd97c7acf"
+    ],
+    "appointments": [
+      "de82812e-d77e-45c0-8f81-1cdff181c430",
+      "90ce738e-f9de-4b80-b956-9e0c630c07ae"
+    ],
+    "visits": [
+      "d8cf1dd4-d10a-43e2-87d9-cfa5ca269959"
+    ],
+    "attachments": [
+      "b6bf9e54-009e-436b-8859-2900b4bdb76d"
+    ],
+    "objectPaths": [
+      "fea6cab4-7fca-4944-8917-3fa29722dd7e/674c11d0-7bc5-4a6a-9ffe-673bd97c7acf/b6bf9e54-009e-436b-8859-2900b4bdb76d"
+    ],
+    "users": {
+      "docA": "c5b2d760-bc35-439e-bb95-118b5798fe81",
+      "docB": "e806087c-bb27-4725-ad01-9409c6f31d39",
+      "asst": "c7e6d794-fed7-4425-aeee-20f42f44e9a8",
+      "clin": "90f1bc54-cbd2-4d77-a32d-e6bb762a7927",
+      "nobody": "55685451-de37-4d0a-8dc5-a9cf4da0072b"
+    }
+  },
+  "results": [
+    {
+      "id": "SETUP-01",
+      "actor": "docA",
+      "operation": "clinic_create A",
+      "expected": "uuid",
+      "actual": "200 fea6cab4-7fca-4944-8917-3fa29722dd7e",
+      "ok": true,
+      "evidence": "fea6cab4-7fca-4944-8917-3fa29722dd7e"
+    },
+    {
+      "id": "SETUP-02",
+      "actor": "docB",
+      "operation": "clinic_create B",
+      "expected": "uuid",
+      "actual": "200 6d57176c-2ea1-4f4c-b380-149a8f68ad16",
+      "ok": true,
+      "evidence": "6d57176c-2ea1-4f4c-b380-149a8f68ad16"
+    },
+    {
+      "id": "SETUP-03",
+      "actor": "docA",
+      "operation": "invite assistant (no clinical)",
+      "expected": "code",
+      "actual": "200 code issued",
+      "ok": true,
+      "evidence": {
+        "id": "e3015ed4-7111-4bba-85f7-8f96af192c7a"
+      }
+    },
+    {
+      "id": "SETUP-04",
+      "actor": "asst",
+      "operation": "clinic_join",
+      "expected": "clinic A id",
+      "actual": "200 fea6cab4-7fca-4944-8917-3fa29722dd7e",
+      "ok": true,
+      "evidence": "fea6cab4-7fca-4944-8917-3fa29722dd7e"
+    },
+    {
+      "id": "INV-01",
+      "actor": "asst",
+      "operation": "reuse consumed invitation code",
+      "expected": "INVITATION_INVALID",
+      "actual": "400 INVITATION_INVALID",
+      "ok": true,
+      "evidence": {
+        "code": "P0001",
+        "details": null,
+        "hint": null,
+        "message": "INVITATION_INVALID"
+      }
+    },
+    {
+      "id": "INV-02",
+      "actor": "nobody",
+      "operation": "consume another user's code",
+      "expected": "INVITATION_INVALID",
+      "actual": "400 INVITATION_INVALID",
+      "ok": true,
+      "evidence": {
+        "code": "P0001",
+        "details": null,
+        "hint": null,
+        "message": "INVITATION_INVALID"
+      }
+    },
+    {
+      "id": "SETUP-05",
+      "actor": "clin",
+      "operation": "clinic_join with clinical_read",
+      "expected": "clinic A id",
+      "actual": "200 fea6cab4-7fca-4944-8917-3fa29722dd7e",
+      "ok": true,
+      "evidence": "fea6cab4-7fca-4944-8917-3fa29722dd7e"
+    },
+    {
+      "id": "AUTHZ-01",
+      "actor": "docB",
+      "operation": "invite into clinic A",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "AUTHZ-02",
+      "actor": "asst",
+      "operation": "invite (not admin)",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "POS-01",
+      "actor": "asst",
+      "operation": "create patient (with injection markers)",
+      "expected": "receipt, verbatim text",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": {
+        "name": "AUDIT Marker <script>alert(1)</script> ' OR 1=1 --"
+      }
+    },
+    {
+      "id": "XC-01",
+      "actor": "docB",
+      "operation": "read clinic A patients by clinic filter",
+      "expected": "0 rows",
+      "actual": "200 0 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "XC-02",
+      "actor": "docB",
+      "operation": "read clinic A patient by id",
+      "expected": "0 rows",
+      "actual": "200 0 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "XC-03",
+      "actor": "nobody",
+      "operation": "read any patients",
+      "expected": "0 rows",
+      "actual": "200 0 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "XC-04",
+      "actor": "anon",
+      "operation": "read any patients",
+      "expected": "401/42501",
+      "actual": "401 permission denied for table patients",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "XC-05",
+      "actor": "docB",
+      "operation": "search clinic A patients (invoker RPC)",
+      "expected": "0 rows or denied",
+      "actual": "200 0 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "INJ-01",
+      "actor": "asst",
+      "operation": "search with SQL marker",
+      "expected": "no error, only clinic A rows",
+      "actual": "200 1 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "XC-06",
+      "actor": "docB",
+      "operation": "read clinic A memberships",
+      "expected": "0 rows",
+      "actual": "200 0 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "XC-07",
+      "actor": "asst",
+      "operation": "read memberships visible to an assistant",
+      "expected": "own + doctor rows only",
+      "actual": "200 2 rows",
+      "ok": true,
+      "evidence": [
+        {
+          "user_id": "c5b2d760-bc35-439e-bb95-118b5798fe81",
+          "role": "doctor",
+          "is_admin": true
+        },
+        {
+          "user_id": "c7e6d794-fed7-4425-aeee-20f42f44e9a8",
+          "role": "assistant",
+          "is_admin": false
+        }
+      ]
+    },
+    {
+      "id": "XC-08",
+      "actor": "docB",
+      "operation": "create patient in clinic A",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "XC-09",
+      "actor": "docB",
+      "operation": "reuse clinic A patient id inside clinic B",
+      "expected": "CROSS_CLINIC_ID",
+      "actual": "403 CROSS_CLINIC_ID",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "CROSS_CLINIC_ID"
+      }
+    },
+    {
+      "id": "XC-10",
+      "actor": "docB",
+      "operation": "book clinic A patient in clinic B",
+      "expected": "INVALID_PATIENT",
+      "actual": "400 INVALID_PATIENT",
+      "ok": true,
+      "evidence": {
+        "code": "P0001",
+        "details": null,
+        "hint": null,
+        "message": "INVALID_PATIENT"
+      }
+    },
+    {
+      "id": "XC-11",
+      "actor": "nobody",
+      "operation": "create patient in clinic A",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "PRIV-01",
+      "actor": "asst",
+      "operation": "direct INSERT into patients",
+      "expected": "42501",
+      "actual": "403 permission denied for table patients",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": "Grant the required privileges to the current role with: GRANT INSERT ON public.patients TO authenticated;",
+        "message": "permission denied for table patients"
+      }
+    },
+    {
+      "id": "PRIV-02",
+      "actor": "asst",
+      "operation": "direct UPDATE own membership",
+      "expected": "42501",
+      "actual": "403 permission denied for table clinic_memberships",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": "Grant the required privileges to the current role with: GRANT UPDATE ON public.clinic_memberships TO authenticated;",
+        "message": "permission denied for table clinic_memberships"
+      }
+    },
+    {
+      "id": "PRIV-03",
+      "actor": "asst",
+      "operation": "direct DELETE patient",
+      "expected": "42501",
+      "actual": "403 permission denied for table patients",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": "Grant the required privileges to the current role with: GRANT DELETE ON public.patients TO authenticated;",
+        "message": "permission denied for table patients"
+      }
+    },
+    {
+      "id": "PRIV-04",
+      "actor": "asst",
+      "operation": "assistant edits clinical alerts",
+      "expected": "FORBIDDEN_ALERT_EDIT",
+      "actual": "403 FORBIDDEN_ALERT_EDIT",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN_ALERT_EDIT"
+      }
+    },
+    {
+      "id": "PRIV-05",
+      "actor": "asst",
+      "operation": "assistant changes staff access",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "PRIV-06",
+      "actor": "asst",
+      "operation": "assistant lists staff emails",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "PRIV-07",
+      "actor": "asst",
+      "operation": "assistant sets working hours",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "POS-02",
+      "actor": "asst",
+      "operation": "assistant adds waitlist entry",
+      "expected": "settings+waitlist",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "XC-12",
+      "actor": "docB",
+      "operation": "read clinic A schedule",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "PRIV-08",
+      "actor": "asst",
+      "operation": "assistant registers doctor presence",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "XC-13",
+      "actor": "docB",
+      "operation": "doctor B presence in clinic A",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "PRIV-09",
+      "actor": "asst",
+      "operation": "call clinic_private implementation via schema profile",
+      "expected": "PGRST106 invalid schema",
+      "actual": "406 Invalid schema: clinic_private",
+      "ok": true,
+      "evidence": {
+        "code": "PGRST106",
+        "details": null,
+        "hint": "Only the following schemas are exposed: public, graphql_public",
+        "message": "Invalid schema: clinic_private"
+      }
+    },
+    {
+      "id": "POS-03",
+      "actor": "docA",
+      "operation": "doctor presence",
+      "expected": "doctor_online true",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "POS-04",
+      "actor": "asst",
+      "operation": "book appointment",
+      "expected": "receipt",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "WF-01",
+      "actor": "asst",
+      "operation": "skip queue: scheduled -> withDoctor via status",
+      "expected": "INVALID_TRANSITION",
+      "actual": "400 INVALID_TRANSITION",
+      "ok": true,
+      "evidence": {
+        "code": "P0001",
+        "details": null,
+        "hint": null,
+        "message": "INVALID_TRANSITION"
+      }
+    },
+    {
+      "id": "POS-05",
+      "actor": "asst",
+      "operation": "arrived -> waiting",
+      "expected": "receipt",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "WF-02",
+      "actor": "asst",
+      "operation": "send with stale version",
+      "expected": "VERSION_CONFLICT",
+      "actual": "400 VERSION_CONFLICT",
+      "ok": true,
+      "evidence": {
+        "code": "VERSION_CONFLICT"
+      }
+    },
+    {
+      "id": "WF-03",
+      "actor": "asst",
+      "operation": "send with expired intent",
+      "expected": "COMMAND_EXPIRED",
+      "actual": "400 COMMAND_EXPIRED",
+      "ok": true,
+      "evidence": {
+        "code": "P0001",
+        "details": null,
+        "hint": null,
+        "message": "COMMAND_EXPIRED"
+      }
+    },
+    {
+      "id": "POS-06",
+      "actor": "asst",
+      "operation": "send to doctor",
+      "expected": "withDoctor",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "WF-04",
+      "actor": "asst",
+      "operation": "replay same operation id after commit",
+      "expected": "identical receipt, no second handoff",
+      "actual": "400 OPERATION_ID_REUSED",
+      "ok": false,
+      "evidence": null
+    },
+    {
+      "id": "WF-05",
+      "actor": "asst",
+      "operation": "reuse operation id with a different request",
+      "expected": "OPERATION_ID_REUSED",
+      "actual": "400 OPERATION_ID_REUSED",
+      "ok": true,
+      "evidence": {
+        "code": "P0001",
+        "details": null,
+        "hint": null,
+        "message": "OPERATION_ID_REUSED"
+      }
+    },
+    {
+      "id": "XC-14",
+      "actor": "docB",
+      "operation": "acknowledge clinic A handoff",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "PRIV-10",
+      "actor": "asst",
+      "operation": "assistant acknowledges handoff",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "WF-06",
+      "actor": "docA",
+      "operation": "acknowledge from an unregistered device",
+      "expected": "DOCTOR_DEVICE_OFFLINE",
+      "actual": "400 DOCTOR_DEVICE_OFFLINE",
+      "ok": true,
+      "evidence": {
+        "code": "P0001",
+        "details": null,
+        "hint": null,
+        "message": "DOCTOR_DEVICE_OFFLINE"
+      }
+    },
+    {
+      "id": "POS-07",
+      "actor": "docA",
+      "operation": "acknowledge handoff",
+      "expected": "acknowledged_at set",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "PRIV-11",
+      "actor": "asst",
+      "operation": "assistant writes a visit",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "PRIV-12",
+      "actor": "clin",
+      "operation": "clinical-read assistant writes a visit",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "XC-15",
+      "actor": "docB",
+      "operation": "doctor B writes a clinic A visit",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "POS-08",
+      "actor": "docA",
+      "operation": "save visit draft",
+      "expected": "receipt",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "CLIN-01",
+      "actor": "asst",
+      "operation": "read visit_details without clinical_read",
+      "expected": "0 rows",
+      "actual": "200 0 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "CLIN-02",
+      "actor": "asst",
+      "operation": "read diagnoses without clinical_read",
+      "expected": "0 rows",
+      "actual": "200 0 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "CLIN-03",
+      "actor": "clin",
+      "operation": "read visit_details with clinical_read",
+      "expected": "1 row, verbatim note",
+      "actual": "200 1 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "XC-16",
+      "actor": "docB",
+      "operation": "read clinic A visit by id",
+      "expected": "0 rows",
+      "actual": "200 0 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "POS-09",
+      "actor": "docA",
+      "operation": "complete visit",
+      "expected": "completed",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "WF-07",
+      "actor": "docA",
+      "operation": "edit completed visit without amendment",
+      "expected": "COMPLETED_VISIT_IMMUTABLE",
+      "actual": "400 COMPLETED_VISIT_IMMUTABLE",
+      "ok": true,
+      "evidence": {
+        "code": "P0001",
+        "details": null,
+        "hint": null,
+        "message": "COMPLETED_VISIT_IMMUTABLE"
+      }
+    },
+    {
+      "id": "XC-17",
+      "actor": "docB",
+      "operation": "amend clinic A visit",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "POS-10",
+      "actor": "docA",
+      "operation": "amend own completed visit",
+      "expected": "revision 2",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "AUD-01",
+      "actor": "docA",
+      "operation": "admin reads audit metadata columns",
+      "expected": "rows",
+      "actual": "200 3 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "AUD-02",
+      "actor": "docA",
+      "operation": "admin reads audit payload column",
+      "expected": "42501 (column not granted)",
+      "actual": "403 permission denied for table audit_events",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": "Grant the required privileges to the current role with: GRANT SELECT ON public.audit_events TO authenticated;",
+        "message": "permission denied for table audit_events"
+      }
+    },
+    {
+      "id": "AUD-03",
+      "actor": "docA",
+      "operation": "admin selects * on audit_events",
+      "expected": "42501",
+      "actual": "403 permission denied for table audit_events",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": "Grant the required privileges to the current role with: GRANT SELECT ON public.audit_events TO authenticated;",
+        "message": "permission denied for table audit_events"
+      }
+    },
+    {
+      "id": "AUD-04",
+      "actor": "asst",
+      "operation": "assistant reads audit",
+      "expected": "0 rows",
+      "actual": "200 0 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "DOC-01",
+      "actor": "asst",
+      "operation": "stage clinical document without clinical_read",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "DOC-02",
+      "actor": "asst",
+      "operation": "stage PNG named .html",
+      "expected": "ATTACHMENT_EXTENSION",
+      "actual": "400 ATTACHMENT_EXTENSION",
+      "ok": true,
+      "evidence": {
+        "code": "P0001",
+        "details": null,
+        "hint": null,
+        "message": "ATTACHMENT_EXTENSION"
+      }
+    },
+    {
+      "id": "XC-18",
+      "actor": "docB",
+      "operation": "stage document for clinic A patient",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "POS-11",
+      "actor": "clin",
+      "operation": "stage non-clinical document",
+      "expected": "pending",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "DOC-03",
+      "actor": "asst",
+      "operation": "upload bytes to another user's pending path",
+      "expected": "denied",
+      "actual": "400 {\"statusCode\":\"403\",\"error\":\"Unauthorized\",\"message\":\"new ro",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "DOC-04",
+      "actor": "clin",
+      "operation": "upload to an unstaged path",
+      "expected": "denied",
+      "actual": "400 {\"statusCode\":\"403\",\"error\":\"Unauthorized\",\"message\":\"new ro",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "DOC-05",
+      "actor": "clin",
+      "operation": "upload SVG content type to staged path",
+      "expected": "denied by bucket MIME allowlist",
+      "actual": "400 {\"statusCode\":\"415\",\"error\":\"invalid_mime_type\",\"message\":\"mime type image/svg+x",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "POS-12",
+      "actor": "clin",
+      "operation": "upload staged bytes",
+      "expected": "200",
+      "actual": "200 {\"Key\":\"clinic-documents/fea6cab4-7fca-4944-8917-3fa29722dd7",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "DOC-06",
+      "actor": "clin",
+      "operation": "second upload to the same path (overwrite)",
+      "expected": "denied (no UPDATE policy)",
+      "actual": "400 {\"statusCode\":\"409\",\"error\":\"Duplicate\",\"message\":\"The resou",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "DOC-07",
+      "actor": "asst",
+      "operation": "finalize another user's upload (not admin)",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "POS-13",
+      "actor": "clin",
+      "operation": "finalize upload",
+      "expected": "ready",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "DOC-08",
+      "actor": "asst",
+      "operation": "download without a lease",
+      "expected": "denied",
+      "actual": "400 88 bytes",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "XC-19",
+      "actor": "docB",
+      "operation": "authorize access to clinic A document",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "POS-14",
+      "actor": "asst",
+      "operation": "authorize non-clinical document access",
+      "expected": "lease",
+      "actual": "200 object",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "POS-15",
+      "actor": "asst",
+      "operation": "download with lease",
+      "expected": "200, exact bytes",
+      "actual": "200 70 bytes",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "XC-20",
+      "actor": "docB",
+      "operation": "download clinic A object path",
+      "expected": "denied",
+      "actual": "400 88 bytes",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "XC-21",
+      "actor": "docB",
+      "operation": "list clinic A storage prefix",
+      "expected": "0 objects",
+      "actual": "200 0 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "DOC-09",
+      "actor": "clin",
+      "operation": "uploader deletes stored object",
+      "expected": "denied (no DELETE policy)",
+      "actual": "400 {\"statusCode\":\"403\",\"error\":\"Unauthorized\",\"message\":\"Access",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "POS-16",
+      "actor": "docA",
+      "operation": "deactivate assistant",
+      "expected": "ok",
+      "actual": "204 ",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "REM-01",
+      "actor": "asst(removed)",
+      "operation": "authorize document after removal (old token)",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "REM-02",
+      "actor": "asst(removed)",
+      "operation": "download with the lease issued before removal",
+      "expected": "denied",
+      "actual": "400 88 bytes",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "REM-03",
+      "actor": "asst(removed)",
+      "operation": "read patients after removal",
+      "expected": "0 rows",
+      "actual": "200 0 rows",
+      "ok": true,
+      "evidence": null
+    },
+    {
+      "id": "REM-04",
+      "actor": "asst(removed)",
+      "operation": "create patient after removal",
+      "expected": "FORBIDDEN",
+      "actual": "403 FORBIDDEN",
+      "ok": true,
+      "evidence": {
+        "code": "42501",
+        "details": null,
+        "hint": null,
+        "message": "FORBIDDEN"
+      }
+    },
+    {
+      "id": "REM-05",
+      "actor": "asst(removed)",
+      "operation": "web membership re-check sees inactive row",
+      "expected": "active=false or 0 rows",
+      "actual": "200 0 rows",
+      "ok": true,
+      "evidence": []
+    },
+    {
+      "id": "WF-04b",
+      "actor": "docA",
+      "operation": "replay identical send command after commit",
+      "expected": "identical receipt, no second handoff",
+      "actual": "200/200 identical=true version=4",
+      "ok": true,
+      "evidence": null
+    }
+  ],
+  "notes": [
+    "WF-04 failed only because the test regenerated _expires_at, so the replayed request differed from the original and OPERATION_ID_REUSED was the correct server answer. WF-04b re-ran the replay with an identical command."
+  ]
+}
