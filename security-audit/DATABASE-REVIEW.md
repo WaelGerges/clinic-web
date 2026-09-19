@@ -12,7 +12,17 @@ PostgREST exposes `public` and `graphql_public` only. A direct attempt to reach 
 
 Two privilege defects were found and fixed:
 
-- **Default privileges** (finding CW-02). `ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public` granted **all** privileges on every future table and sequence, and `EXECUTE` on every future function, to `anon` and `authenticated`. Any table added by a later migration would have been readable and writable by every signed-in user until someone remembered to revoke it. Now `postgres` and `service_role` only.
+- **Default privileges** (finding CW-02). `ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public` granted **all** privileges on every future table and sequence, and `EXECUTE` on every future function, to `anon` and `authenticated`. Any table added by a later migration would have been readable and writable by every signed-in user until someone remembered to revoke it. For role `postgres` this is now `postgres` and `service_role` only.
+
+  **Residual, re-checked 2026-09-19 13:02 UTC.** A second set of default ACLs in `public` is owned by the platform role `supabase_admin` and still grants `anon` and `authenticated` on future tables, sequences and functions. `postgres` is not a member of `supabase_admin`, so `ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin` is refused and this cannot be changed from SQL by the project owner. The practical exposure is small: migrations, the MCP connection and the dashboard SQL editor all create objects as `postgres`, which is covered. The gap applies only to objects the Supabase platform itself creates in `public`. Verify with:
+
+  ```sql
+  select pg_get_userbyid(defaclrole) as owning_role, defaclobjtype, defaclacl::text
+  from pg_default_acl d join pg_namespace n on n.oid = d.defaclnamespace
+  where n.nspname = 'public';
+  ```
+
+  After any migration that adds an object to `public`, confirm the result directly rather than relying on the default: `select has_table_privilege('authenticated','public.<table>','select');` should be false until a grant is intended.
 - **Private implementations were client-callable** (finding CW-05). Twenty `clinic_private` functions had `EXECUTE` for `authenticated`, because the `public` wrappers were `SECURITY INVOKER`. That made the wrapper's own logic bypassable in principle: `public.clinic_apply_command` is where the `send` action's freshness check and `require_doctor_presence()` live, and calling `clinic_private.apply_command` directly skips both. It was not remotely reachable (§1), so this is a defence-in-depth gap rather than a demonstrated bypass. The wrappers are now `SECURITY DEFINER` with `search_path=''`, and only `allowed` and `attachment_object_allowed` (needed by RLS policies) remain executable.
 
 ## 3. Row-level security

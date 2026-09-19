@@ -130,9 +130,11 @@ and the form calls `client.auth.updateUser({ password })` with no re-authenticat
 
 **Evidence (before).** `{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}` for tables, with the equivalent for sequences and functions.
 
-**Fix applied** (migration `20260918234315`): `ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON TABLES/SEQUENCES FROM anon, authenticated` and `REVOKE ALL ON FUNCTIONS FROM public, anon, authenticated`; the same for `EXECUTE ON FUNCTIONS` in `clinic_private`. Live catalog after: `{postgres=…,service_role=…}` only.
+**Fix applied** (migration `20260918234315`): `ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON TABLES/SEQUENCES FROM anon, authenticated` and `REVOKE ALL ON FUNCTIONS FROM public, anon, authenticated`; the same for `EXECUTE ON FUNCTIONS` in `clinic_private`. Live catalog after, for role `postgres`: `{postgres=…,service_role=…}` only.
 
-**Compatibility note.** Future migrations must now grant explicitly. The verification block inside the migration and the regression test both enforce this, and `DATABASE-REVIEW.md` §2 records it so it is not rediscovered as a bug.
+**Residual, found on re-check 2026-09-19 and not closed.** A second set of default ACLs in `public` belongs to the platform role `supabase_admin` and still grants `anon` and `authenticated`. An attempt to narrow them was refused because `postgres` is not a member of `supabase_admin`, so this is not changeable from SQL by the project owner. Objects created by migrations, by the MCP connection and by the dashboard SQL editor are all owned by `postgres` and therefore covered; the gap applies only to objects the Supabase platform itself creates in `public`. The verification query is in `DATABASE-REVIEW.md` §2. My earlier wording implied the fix was complete for the whole schema, and this paragraph corrects that.
+
+**Compatibility note.** Future migrations must now grant explicitly. The verification block inside the migration and the regression test both enforce this for `postgres`-owned objects, and `DATABASE-REVIEW.md` §2 records the residual so it is not rediscovered as a bug.
 
 **Mappings** A01:2025 Broken Access Control · A02:2025 Security Misconfiguration · API5:2023 Broken Function Level Authorization · ASVS 5.0 V1/V8 (least privilege at a trusted layer) · CWE-276 Incorrect Default Permissions.
 
