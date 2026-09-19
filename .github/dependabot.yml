@@ -1,0 +1,26 @@
+# Keeps the dependency and CI-action surface current.
+#
+# The security assessment pinned the GitHub Actions to commit SHAs (finding
+# CW-09). Pinning stops a moved tag from changing what runs, but it also means
+# nothing updates on its own, so Dependabot is what keeps those pins fresh.
+# It rewrites the SHA and updates the trailing "# v7" comment.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One pull request for the routine toolchain churn, so review effort goes
+      # to the four dependencies that actually reach the browser.
+      dev-tooling:
+        dependency-type: development
+        update-types: [minor, patch]
+    labels: [dependencies]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies, ci]
